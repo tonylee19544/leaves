@@ -137,6 +137,12 @@ func XGEnsembleFromReader(reader *bufio.Reader, loadTransformation bool) (*Ensem
 	e := &xgEnsemble{}
 
 	// reading header info
+	useLearnerParam := false
+
+	if peek, err := reader.Peek(4); err == nil && string(peek) == "binf" {
+		_, _ = reader.Read(make([]byte, 4))
+		useLearnerParam = true
+	}
 	header, err := xgbin.ReadModelHeader(reader)
 	if err != nil {
 		return nil, err
@@ -160,10 +166,10 @@ func XGEnsembleFromReader(reader *bufio.Reader, loadTransformation bool) (*Ensem
 	if err != nil {
 		return nil, err
 	}
-	if origModel.Param.NumFeature > int32(header.Param.NumFeatures) {
+	if origModel.Param.DeprecatedNumFeature > int32(header.Param.NumFeatures) {
 		return nil, fmt.Errorf(
 			"gbtee number of features %d, but header number of features %d",
-			origModel.Param.NumFeature,
+			origModel.Param.DeprecatedNumFeature,
 			header.Param.NumFeatures,
 		)
 	}
@@ -194,13 +200,21 @@ func XGEnsembleFromReader(reader *bufio.Reader, loadTransformation bool) (*Ensem
 		return nil, fmt.Errorf("unsupported model type (got: %s)", header.NameGbm)
 	}
 	// TODO: below is not true (see Agaricus test). Why?
-	// if header.Param.NumClass != origModel.Param.NumOutputGroup {
+	// if header.Param.NumClass != origModel.Param.DeprecatedNumOutputGroup {
 	// 	return nil, fmt.Errorf("header number of class and model number of class should be the same (%d != %d)",
-	// 		header.Param.NumClass, origModel.Param.NumOutputGroup)
+	// 		header.Param.NumClass, origModel.Param.DeprecatedNumOutputGroup)
 	// }
-	e.nRawOutputGroups = int(origModel.Param.NumOutputGroup)
-	if origModel.Param.NumRoots != 1 {
-		return nil, fmt.Errorf("support only trees with 1 root (got %d)", origModel.Param.NumRoots)
+	if useLearnerParam || origModel.Param.DeprecatedNumOutputGroup == 0 {
+		if header.Param.NumClass == 0 {
+			e.nRawOutputGroups = 1
+		} else {
+			e.nRawOutputGroups = int(header.Param.NumClass)
+		}
+	} else {
+		e.nRawOutputGroups = int(origModel.Param.DeprecatedNumOutputGroup)
+	}
+	if origModel.Param.DeprecatedNumRoots != 1 {
+		return nil, fmt.Errorf("support only trees with 1 root (got %d)", origModel.Param.DeprecatedNumRoots)
 	}
 	if len(origModel.TreeInfo) != int(origModel.Param.NumTrees) {
 		return nil, fmt.Errorf("TreeInfo size should be %d (got %d)",

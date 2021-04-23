@@ -11,9 +11,9 @@ import (
 // Note: XGBosst widely use int type which is machine depended. Go's int32 should cover most common case
 // Note: Data structures' fields comments are take from original XGBoost source code
 
-// LearnerModelParam - training parameter for regression.
+// LearnerModelParamLegacy - training parameter for regression.
 // from src/learner.cc
-type LearnerModelParam struct {
+type LearnerModelParamLegacy struct {
 	// global bias
 	BaseScore float32
 	// number of features
@@ -34,17 +34,17 @@ type GBTreeModelParam struct {
 	// number of trees
 	NumTrees int32
 	// number of roots
-	NumRoots int32
+	DeprecatedNumRoots int32
 	// number of features to be used by trees
-	NumFeature int32
+	DeprecatedNumFeature int32
 	// pad this space, for backward compatibility reason
 	Pad32bit int32
 	// deprecated padding space.
-	NumPbufferDeprecated int64
+	DeprecatedNumPbufferDeprecated int64
 	// how many output group a single instance can produce
 	// this affects the behavior of number of output we have:
 	// suppose we have n instance and k group, output will be k * n
-	NumOutputGroup int32
+	DeprecatedNumOutputGroup int32
 	// size of leaf vector needed in tree
 	SizeLeafVector int32
 	// reserved parameters
@@ -140,7 +140,7 @@ type GBTreeModel struct {
 // file. Used just as a container of input data for go implementation. Objects
 // layout could be arbitrary
 type ModelHeader struct {
-	Param   LearnerModelParam
+	Param   LearnerModelParamLegacy
 	NameObj string
 	NameGbm string
 }
