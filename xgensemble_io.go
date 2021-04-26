@@ -3,6 +3,8 @@ package leaves
 import (
 	"bufio"
 	"fmt"
+	"github.com/dmitryikh/leaves/internal/xgjson"
+	"math"
 	"os"
 
 	"github.com/dmitryikh/leaves/internal/xgbin"
@@ -159,8 +161,11 @@ func XGEnsembleFromReader(reader *bufio.Reader, loadTransformation bool) (*Ensem
 		return nil, fmt.Errorf("zero number of features")
 	}
 	e.MaxFeatureIdx = int(header.Param.NumFeatures) - 1
-	e.BaseScore = float64(header.Param.BaseScore)
-
+	if useLearnerParam {
+		e.BaseScore = math.Log(float64(header.Param.BaseScore)) - math.Log(float64(1-header.Param.BaseScore))
+	} else {
+		e.BaseScore = float64(header.Param.BaseScore)
+	}
 	// reading gbtree
 	origModel, err := xgbin.ReadGBTreeModel(reader)
 	if err != nil {
@@ -200,9 +205,9 @@ func XGEnsembleFromReader(reader *bufio.Reader, loadTransformation bool) (*Ensem
 		return nil, fmt.Errorf("unsupported model type (got: %s)", header.NameGbm)
 	}
 	// TODO: below is not true (see Agaricus test). Why?
-	// if header.Param.NumClass != origModel.Param.DeprecatedNumOutputGroup {
+	// if header.GbTreeModelParam.NumClass != origModel.GbTreeModelParam.DeprecatedNumOutputGroup {
 	// 	return nil, fmt.Errorf("header number of class and model number of class should be the same (%d != %d)",
-	// 		header.Param.NumClass, origModel.Param.DeprecatedNumOutputGroup)
+	// 		header.GbTreeModelParam.NumClass, origModel.GbTreeModelParam.DeprecatedNumOutputGroup)
 	// }
 	if useLearnerParam || origModel.Param.DeprecatedNumOutputGroup == 0 {
 		if header.Param.NumClass == 0 {
@@ -271,4 +276,55 @@ func XGEnsembleFromFile(filename string, loadTransformation bool) (*Ensemble, er
 	defer reader.Close()
 	bufReader := bufio.NewReader(reader)
 	return XGEnsembleFromReader(bufReader, loadTransformation)
+}
+
+func XGEnsembleFromJsonFile(filename string, loadTransformation bool) (*Ensemble, error) {
+	gbTreeJson, err := xgjson.ReadGBTree(filename)
+	if err != nil {
+		return nil, err
+	}
+	e := &xgEnsemble{}
+	if gbTreeJson.Learner.LearnerModelParam.NumClass == 0 {
+		e.nRawOutputGroups = 1
+	} else {
+		e.nRawOutputGroups = int(gbTreeJson.Learner.LearnerModelParam.NumClass)
+	}
+	e.WeightDrop = gbTreeJson.Learner.GradientBooster.WeightDrop
+	e.BaseScore = math.Log(float64(gbTreeJson.Learner.LearnerModelParam.BaseScore)) - math.Log(1-float64(gbTreeJson.Learner.LearnerModelParam.BaseScore))
+	e.MaxFeatureIdx = int(gbTreeJson.Learner.LearnerModelParam.NumFeatures) - 1
+	e.name = fmt.Sprintf("xgboost.%s", gbTreeJson.Learner.GradientBooster.Name)
+	e.WeightDrop = make([]float64, gbTreeJson.Learner.GradientBooster.Model.GbTreeModelParam.NumTrees)
+	if gbTreeJson.Learner.GradientBooster.Name == "dart" {
+		// read additional float32 slice of weighs of dropped trees. Only for 'dart' models
+		e.WeightDrop = gbTreeJson.Learner.GradientBooster.WeightDrop
+	} else if gbTreeJson.Learner.GradientBooster.Name == "gbtree" {
+		for i := 0; i < int(gbTreeJson.Learner.GradientBooster.Model.GbTreeModelParam.NumTrees); i++ {
+			e.WeightDrop[i] = 1.0
+		}
+	} else {
+		return nil, fmt.Errorf("unsupported model type (got: %s)", gbTreeJson.Learner.GradientBooster.Name)
+	}
+	var transform transformation.Transform
+	transform = &transformation.TransformRaw{e.nRawOutputGroups}
+	if loadTransformation {
+		if gbTreeJson.Learner.Objective.Name == "binary:logistic" {
+			transform = &transformation.TransformLogistic{}
+		} else {
+			return nil, fmt.Errorf("unknown transformation function '%s'", gbTreeJson.Learner.Objective.Name)
+		}
+	}
+	nTrees := gbTreeJson.Learner.GradientBooster.Model.GbTreeModelParam.NumTrees
+	if nTrees == 0 {
+		return nil, fmt.Errorf("no trees in model")
+	}
+	e.Trees = make([]lgTree, 0, nTrees)
+	model := gbTreeJson.Learner.GradientBooster.Model.ToBinGBTreeModel()
+	for i := int32(0); i < nTrees; i++ {
+		tree, err := xgTreeFromTreeModel(model.Trees[i], gbTreeJson.Learner.LearnerModelParam.NumFeatures)
+		if err != nil {
+			return nil, fmt.Errorf("error while reading %d tree: %s", i, err.Error())
+		}
+		e.Trees = append(e.Trees, tree)
+	}
+	return &Ensemble{e, transform}, nil
 }

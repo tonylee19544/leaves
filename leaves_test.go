@@ -343,6 +343,65 @@ func InnerTestXGAgaricus(t *testing.T, nThreads int) {
 	}
 }
 
+func TestXGJson(t *testing.T) {
+	InnerTestXGJson(t, 1)
+	InnerTestXGJson(t, 2)
+	InnerTestXGJson(t, 3)
+	InnerTestXGJson(t, 4)
+}
+
+func InnerTestXGJson(t *testing.T, nThreads int) {
+	// loading test data
+	testPath := filepath.Join("testdata", "agaricus_test.libsvm")
+	modelPath := filepath.Join("testdata", "xgagaricus.json")
+	truePath := filepath.Join("testdata", "xgagaricus_true_predictions.txt")
+	skipTestIfFileNotExist(t, testPath, modelPath, truePath)
+	csr, err := mat.CSRMatFromLibsvmFile(testPath, 0, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// loading model
+	model, err := XGEnsembleFromJsonFile(modelPath, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if model.NEstimators() != 3 {
+		t.Fatalf("expected 3 trees (got %d)", model.NEstimators())
+	}
+	if model.NOutputGroups() != 1 {
+		t.Fatalf("expected NOutputGroups = 1 (got %d)", model.NOutputGroups())
+	}
+	if model.NRawOutputGroups() != 1 {
+		t.Fatalf("expected NRawOutputGroups = 1 (got %d)", model.NRawOutputGroups())
+	}
+	//if model.Transformation().Type() != transformation.Logistic {
+	//	t.Fatalf("expected TransforType = Logistic (got %s)", model.Transformation().Name())
+	//}
+
+	// loading true predictions as DenseMat
+	truePredictions, err := mat.DenseMatFromCsvFile(truePath, 0, false, ",", 0.0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// do predictions with transformation inside
+	predictions := make([]float64, csr.Rows()*model.NOutputGroups())
+	model.PredictCSR(csr.RowHeaders, csr.ColIndexes, csr.Values, predictions, 0, nThreads)
+	// compare results
+	if err := util.AlmostEqualFloat64Slices(truePredictions.Values, predictions, 1e-7); err != nil {
+		t.Fatalf("different predictions: %s", err.Error())
+	}
+
+	// do raw predictions with transformation outside
+	rawModel := model.EnsembleWithRawPredictions()
+	rawModel.PredictCSR(csr.RowHeaders, csr.ColIndexes, csr.Values, predictions, 0, nThreads)
+	util.SigmoidFloat64SliceInplace(predictions)
+	// compare results
+	if err := util.AlmostEqualFloat64Slices(truePredictions.Values, predictions, 1e-7); err != nil {
+		t.Fatalf("different predictions: %s", err.Error())
+	}
+}
 func TestXGBLinAgaricus(t *testing.T) {
 	InnerTestXGBLinAgaricus(t, true, 1)
 	InnerTestXGBLinAgaricus(t, true, 2)

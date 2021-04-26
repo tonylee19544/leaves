@@ -15,11 +15,11 @@ import (
 // from src/learner.cc
 type LearnerModelParamLegacy struct {
 	// global bias
-	BaseScore float32
+	BaseScore float32 `json:"base_score,string"`
 	// number of features
-	NumFeatures uint32
+	NumFeatures uint32 `json:"num_feature,string"`
 	// number of classes, if it is multi-class classification
-	NumClass int32
+	NumClass int32 `json:"num_class,string"`
 	// Model contain additional properties
 	ContainExtraAttrs int32
 	// Model contain eval metrics
@@ -32,7 +32,7 @@ type LearnerModelParamLegacy struct {
 // from src/gbm/gbtree_model.h
 type GBTreeModelParam struct {
 	// number of trees
-	NumTrees int32
+	NumTrees int32 `json:"num_trees,string"`
 	// number of roots
 	DeprecatedNumRoots int32
 	// number of features to be used by trees
@@ -46,7 +46,7 @@ type GBTreeModelParam struct {
 	// suppose we have n instance and k group, output will be k * n
 	DeprecatedNumOutputGroup int32
 	// size of leaf vector needed in tree
-	SizeLeafVector int32
+	SizeLeafVector int32 `json:"size_leaf_vector,string"`
 	// reserved parameters
 	Reserved [32]int32
 }
@@ -57,16 +57,16 @@ type TreeParam struct {
 	// number of start root
 	NumRoots int32
 	// total number of nodes
-	NumNodes int32
+	NumNodes int32 `json:"num_nodes,string"`
 	// number of deleted nodes
 	NumDeleted int32
 	// maximum depth, this is a statistics of the tree
 	MaxDepth int32
 	// number of features used for tree construction
-	NumFeature int32
+	NumFeature int32 `json:"num_feature,string"`
 	// leaf vector size, used for vector tree
 	// used to store more than one dimensional information in tree
-	SizeLeafVector int32
+	SizeLeafVector int32 `json:"size_leaf_vector,string"`
 	// reserved part, make sure alignment works for 64bit
 	Reserved [31]int32
 }
@@ -123,7 +123,7 @@ type TreeModel struct {
 	Stats []RTreeNodeStat
 	// // leaf vector, that is used to store additional information
 	// LeafVector []float32
-	Param TreeParam
+	Param TreeParam `json:"tree_param"`
 }
 
 // GBTreeModel contains all input data related to gbtree model. Used just as a
