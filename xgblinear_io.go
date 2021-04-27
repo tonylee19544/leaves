@@ -15,7 +15,7 @@ func XGBLinearFromReader(reader *bufio.Reader, loadTransformation bool) (*Ensemb
 	e := &xgLinear{}
 
 	//To support version after 1.0.0
-	useLearnerParam := useLearnerParam(reader)
+	isNewFormat := xgbin.IsNewFormat(reader)
 	// reading header info
 	header, err := xgbin.ReadModelHeader(reader)
 	if err != nil {
@@ -34,7 +34,7 @@ func XGBLinearFromReader(reader *bufio.Reader, loadTransformation bool) (*Ensemb
 	}
 	e.BaseScore = 0
 	e.nRawOutputGroups = 1
-	if useLearnerParam {
+	if isNewFormat {
 		e.nRawOutputGroups = getNRawOutputGroups(header.Param.NumClass)
 		e.BaseScore = calculateBaseScoreFromLearnerParam(float64(header.Param.BaseScore))
 		e.NumFeature = int(header.Param.NumFeatures)

@@ -318,3 +318,13 @@ func ReadGBLinearModel(reader *bufio.Reader) (*GBLinearModel, error) {
 	}
 	return gbLinearModel, nil
 }
+
+func IsNewFormat(reader *bufio.Reader) bool {
+	newFormat := false
+	if peek, err := reader.Peek(4); err == nil && string(peek) == "binf" {
+		_, _ = reader.Read(make([]byte, 4))
+		newFormat = true
+	}
+	return newFormat
+}
+

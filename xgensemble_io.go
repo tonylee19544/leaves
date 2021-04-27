@@ -168,7 +168,7 @@ func readWeightDropFromReader(reader *bufio.Reader, numTrees int, modelName stri
 func XGEnsembleFromReader(reader *bufio.Reader, loadTransformation bool) (*Ensemble, error) {
 	e := &xgEnsemble{}
 
-	useLearnerParam := useLearnerParam(reader)
+	isNewFormat := xgbin.IsNewFormat(reader)
 	// reading header info
 	header, err := xgbin.ReadModelHeader(reader)
 	if err != nil {
@@ -187,7 +187,7 @@ func XGEnsembleFromReader(reader *bufio.Reader, loadTransformation bool) (*Ensem
 	}
 	//To support version before 1.0.0
 	e.nRawOutputGroups, e.BaseScore = getParamsAccordingToUseLearnerParam(
-		useLearnerParam,
+		isNewFormat,
 		header.Param.NumClass,
 		origModel.Param.DeprecatedNumOutputGroup,
 		float64(header.Param.BaseScore),
@@ -238,15 +238,6 @@ func XGEnsembleFromReader(reader *bufio.Reader, loadTransformation bool) (*Ensem
 		return nil, err
 	}
 	return &Ensemble{e, transform}, nil
-}
-
-func useLearnerParam(reader *bufio.Reader) bool {
-	useLearnerParam := false
-	if peek, err := reader.Peek(4); err == nil && string(peek) == "binf" {
-		_, _ = reader.Read(make([]byte, 4))
-		useLearnerParam = true
-	}
-	return useLearnerParam
 }
 
 func getParamsAccordingToUseLearnerParam(useLearnerParam bool, numClass int32, NumOutputGroup int32, baseScore float64) (int, float64) {
