@@ -39,7 +39,7 @@ type Tree struct {
 	SplitIndices       []uint32        `json:"split_indices"`
 	SplitConditions    []float32       `json:"split_conditions"`
 	SplitType          []int32         `json:"split_type"`
-	DefaultLeft        []bool          `json:"default_left"`
+	DefaultLeft        []int32         `json:"default_left"`
 	Categories         []int32         `json:"categories"`
 	CategoriesNodes    []int32         `json:"categories_nodes"`
 	CategoriesSegments []int32         `json:"categories_segments"`
@@ -68,8 +68,8 @@ func (t *Tree) toBinTreeModel() *xgbin.TreeModel {
 		nodes[idx].CRight = t.RightChildren[idx]
 		nodes[idx].CLeft = t.LeftChildren[idx]
 		nodes[idx].Parent = t.Parents[idx]
-		nodes[idx].Parent = int32(uint32(t.Parents[idx]) | 1 << 31)
-		if t.DefaultLeft[idx] {
+		nodes[idx].Parent = int32(uint32(t.Parents[idx]) | 1<<31)
+		if t.DefaultLeft[idx] > 0 {
 			t.SplitIndices[idx] |= 1 << 31
 		}
 		nodes[idx].SIndex = t.SplitIndices[idx]
