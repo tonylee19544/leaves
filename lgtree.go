@@ -43,7 +43,7 @@ func (t *lgTree) numericalDecision(node *lgNode, fval float64) bool {
 		return node.Flags&defaultLeft > 0
 	}
 	// Note: LightGBM uses `<=`, but XGBoost uses `<`
-	return fval <= node.Threshold
+	return fval < node.Threshold
 }
 
 func (t *lgTree) categoricalDecision(node *lgNode, fval float64) bool {

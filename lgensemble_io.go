@@ -41,7 +41,7 @@ type lgNodeJSON struct {
 	// Threshold could be float64 (for numerical decision) or string (for categorical, example "10||100||400")
 	Threshold     interface{}     `json:"threshold"`
 	DecisionType  string          `json:"decision_type"`
-	DefaultLeft   bool            `json:"default_left"`
+	DefaultLeft   int32           `json:"default_left"`
 	MissingType   string          `json:"missing_type"`
 	LeftChildRaw  json.RawMessage `json:"left_child"`
 	RightChildRaw json.RawMessage `json:"right_child"`
@@ -472,7 +472,7 @@ func unmarshalTree(raw []byte) (lgTree, error) {
 			return node, fmt.Errorf("unknown missing_type '%s'", nodeJSON.MissingType)
 		}
 		defaultType := uint8(0)
-		if nodeJSON.DefaultLeft {
+		if nodeJSON.DefaultLeft > 0 {
 			defaultType = defaultLeft
 		}
 		threshold, ok := nodeJSON.Threshold.(float64)
