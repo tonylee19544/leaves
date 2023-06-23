@@ -129,3 +129,55 @@ Single thread:
 
 In case if you are interested in the project or if you have questions, please contact with me by
 email: khdmitryi ```at``` gmail.com
+
+## Wrapper and json example
+Wrapper provides extra interface on top of raw model:
+- Adds a testing functionality to validate that golang predictions are the same as python predictions. Test predictions are always done on a slice of features calculated as range(0, feature_count)
+- Adds a functionality to pass a dict featureName -> featureValue as input, and calculate predictions based on that.
+```python
+# input_cols contain all the feature names
+train_data = df[df['val'] == 0][input_cols]
+train_labels = df[df['val'] == 0][label_cols]
+dtrain = xgb.DMatrix(train_data, train_labels)
+params = {
+    'max_depth': 8,
+    'eval_metric': ['auc', 'error', 'logloss'],
+    'eta': 0.1,
+    'objective': 'binary:logistic',
+    'min_child_weight': 40,
+    'colsample_bytree': 0.8,
+    }
+
+model = xgb.train(params=params,
+                dtrain=dtrain,
+                evals = evallist,
+                num_boost_round=10000,
+                verbose_eval=100,
+                )
+model.save_model("model.json")
+row = np.array(list(range(len(input_cols)))).reshape(1, input_cols)
+pred = model.predict(xgb.DMatrix(row), validate_features=False
+             )
+wrapper_config = {
+    "TestPrediction": float(pred[0]),
+    "FeatureNames": input_cols,
+}
+file_path = "wrapper_config.json"
+
+# Open the file in write mode and write the dictionary as JSON
+with open(file_path, "w") as json_file:
+    json.dump(wrapper_config, json_file)
+```
+```go
+model, err := leaves.NewForestWrapper("/Users/maksimgaiduk/tmp/model.json", "/Users/maksimgaiduk/tmp/wrapper_config.json")
+	if err != nil {
+		panic(err)
+	}
+	feature_names := []string{"feature1", "feature2",}
+	fvals := make(map[string]float64)
+	for i, name := range feature_names {
+		fvals[name] = float64(i)
+	}
+	p, missingCount := model.PredictSingle(fvals)
+	fmt.Printf("Prediction for %v: %.8f, missingCount: %v\n", fvals, p, missingCount)
+```
