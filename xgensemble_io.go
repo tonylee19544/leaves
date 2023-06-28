@@ -251,6 +251,8 @@ func checkTreeInfo(treeInfo []int32, nRawOutputGroups int) error {
 func XGEnsembleFromFile(filename string, loadTransformation bool) (*Ensemble, error) {
 	if ensemble, err := xgEnsembleFromJsonFile(filename, loadTransformation); err == nil {
 		return ensemble, nil
+	} else {
+		panic(err)
 	}
 	reader, err := os.Open(filename)
 	if err != nil {
@@ -281,7 +283,11 @@ func createXGEnsembleFromGBTreeJson(gbTreeJson *xgjson.GBTreeJson) (*xgEnsemble,
 	e := &xgEnsemble{}
 	var err error
 	e.nRawOutputGroups = getNRawOutputGroups(gbTreeJson.Learner.LearnerModelParam.NumClass)
-	e.BaseScore = calculateBaseScoreFromLearnerParam(float64(gbTreeJson.Learner.LearnerModelParam.BaseScore))
+	if gbTreeJson.Learner.Objective.Name == "binary:logistic" {
+		e.BaseScore = calculateBaseScoreFromLearnerParam(float64(gbTreeJson.Learner.LearnerModelParam.BaseScore))
+	} else {
+		e.BaseScore = float64(gbTreeJson.Learner.LearnerModelParam.BaseScore)
+	}
 	if e.MaxFeatureIdx, err = calculateMaxFeatureIdx(int(gbTreeJson.Learner.LearnerModelParam.NumFeatures)); err != nil {
 		return nil, err
 	}
@@ -375,6 +381,8 @@ func createTransform(loadTransformation bool, nRawOutputGroups int, objectiveNam
 	if loadTransformation {
 		if objectiveName == "binary:logistic" {
 			transform = &transformation.TransformLogistic{}
+		} else if objectiveName == "reg:squarederror" {
+			transform = &transformation.TransformRaw{NumOutputGroups: 1}
 		} else {
 			return nil, fmt.Errorf("unknown transformation function '%s'", objectiveName)
 		}
