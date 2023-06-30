@@ -1,4 +1,4 @@
-module github.com/ishanbhattacharya1/leaves
+module github.com/dmitryikh/leaves
 
 go 1.20
 
