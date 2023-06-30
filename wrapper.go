@@ -11,11 +11,13 @@ type ForestWrapper struct {
 	Ensemble
 	FeatureNames   []string
 	TestPrediction float64
+	BestNTreeLimit int
 }
 
 type WrapperConfig struct {
 	FeatureNames   []string
 	TestPrediction float64
+	BestNTreeLimit int
 }
 
 func NewForestWrapper(modelPath, configPath string) (*ForestWrapper, error) {
@@ -37,7 +39,7 @@ func NewForestWrapper(modelPath, configPath string) (*ForestWrapper, error) {
 	for i := 0; i < len(config.FeatureNames); i += 1 {
 		fvals[i] = float64(i)
 	}
-	pred := model.PredictSingle(fvals, 0)
+	pred := model.PredictSingle(fvals, config.BestNTreeLimit)
 	// compare with test prediction using epsilon
 	if math.Abs(pred-config.TestPrediction) > 1e-4 {
 		return nil, fmt.Errorf("test prediction failed: %f != %f", pred, config.TestPrediction)
@@ -46,6 +48,7 @@ func NewForestWrapper(modelPath, configPath string) (*ForestWrapper, error) {
 		Ensemble:       *model,
 		FeatureNames:   config.FeatureNames,
 		TestPrediction: config.TestPrediction,
+		BestNTreeLimit: config.BestNTreeLimit,
 	}, nil
 }
 
@@ -58,5 +61,5 @@ func (fw *ForestWrapper) PredictSingle(features map[string]float64) (prediction 
 		}
 		fvals[i] = fval
 	}
-	return fw.Ensemble.PredictSingle(fvals, 0), missingCount
+	return fw.Ensemble.PredictSingle(fvals, fw.BestNTreeLimit), missingCount
 }
