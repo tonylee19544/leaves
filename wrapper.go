@@ -12,12 +12,14 @@ type ForestWrapper struct {
 	FeatureNames   []string
 	TestPrediction float64
 	BestNTreeLimit int
+	TrainingDate   int
 }
 
 type WrapperConfig struct {
 	FeatureNames   []string
 	TestPrediction float64
 	BestNTreeLimit int
+	TrainingDate   int
 }
 
 func NewForestWrapper(modelPath, configPath string) (*ForestWrapper, error) {
@@ -49,6 +51,7 @@ func NewForestWrapper(modelPath, configPath string) (*ForestWrapper, error) {
 		FeatureNames:   config.FeatureNames,
 		TestPrediction: config.TestPrediction,
 		BestNTreeLimit: config.BestNTreeLimit,
+		TrainingDate:   config.TrainingDate,
 	}, nil
 }
 
